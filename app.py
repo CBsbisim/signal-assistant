@@ -6,9 +6,8 @@
 The two turns below are local code: they work with no model at all. The model is only asked for the
 ordinary case, and its reply is checked before anything is rendered.
 """
-import json, os, sys
+import json, os, re, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import model  # noqa: E402
 import retrieve  # noqa: E402  Lab 4: evidence with source, section, date, score
@@ -21,41 +20,67 @@ MIN_SCORE = 0.25             # below this, a retrieval hit is not treated as evi
 SCHEMA = {"reply": str, "options": list, "action": (dict, type(None)), "unsupported_claims": list}
 APPOINTMENTS = [{"id": "derm-14nov", "clinic": "Dermatology", "date": "14 Nov", "time": "10:20"},
                 {"id": "physio-20nov", "clinic": "Physiotherapy", "date": "20 Nov", "time": "09:00"}]
-
+TICKERS = ["XYZ", "ABC"]                      # stocks the simulated corpus covers
+HORIZONS = ["1 month", "6 months", "1 year"]  # offered when the person gives no horizon
+QUERY = {"ticker": None, "horizon": None}     # what the system has understood so far
 
 def valid(data):
     return isinstance(data, dict) and all(k in data and isinstance(data[k], t) for k, t in SCHEMA.items())
-
 
 def fallback_turn():
     """A malformed reply is a caught error, never a blank page."""
     return {"reply": "I could not read the reply, so I have not changed anything. Try again or ask the module lead.",
             "options": [], "action": None, "unsupported_claims": []}
 
-
 def clarification_turn(candidates):
     names = " or ".join("%s on %s" % (a["clinic"], a["date"]) for a in candidates)
     return {"reply": "Which appointment: %s?" % names,
             "options": [a["id"] for a in candidates], "action": None, "unsupported_claims": []}
-
 
 def decline_turn():
     return {"reply": "Dr Achebe has no clinic next week, and I cannot see your dialysis days, so I cannot "
                      "avoid them. Here are the open slots; you choose.",
             "options": ["Thu 09:40", "Fri 14:10"], "action": None, "unsupported_claims": ["clinic availability beyond next week"]}
 
+def understand(message):
+    """Fill in the ticker and horizon the message mentions. Return an unknown ticker, if any."""
+    found = False
+    for t in TICKERS:
+        if re.search(r"\b%s\b" % t, message, re.I):
+            QUERY["ticker"] = t
+            found = True
+    m = re.search(r"(\d+)\s*(week|month|year)", message, re.I)
+    if m:
+        n, unit = int(m.group(1)), m.group(2).lower()
+        QUERY["horizon"] = "%d %s%s" % (n, unit, "" if n == 1 else "s")
+    unknown = [w for w in re.findall(r"\b[A-Z]{2,5}\b", message) if w not in TICKERS]
+    if unknown and not found:
+        QUERY["ticker"] = None
+        return unknown[0]
+    return None
+
+def grounding_turn(unknown=None):
+    """Ask for whatever is missing, or show what was understood and wait for Confirm."""
+    if unknown:
+        text, options = "I have no data for %s. Which stock did you mean?" % unknown, TICKERS
+    elif not QUERY["ticker"]:
+        text, options = "Which stock are you asking about?", TICKERS
+    elif not QUERY["horizon"]:
+        text, options = "How long do you plan to hold %s?" % QUERY["ticker"], HORIZONS
+    else:
+        text = "Understood as: %s, holding for %s. Is that right?" % (QUERY["ticker"], QUERY["horizon"])
+        options = ["Confirm", "Start over"]
+    return {"reply": text, "options": list(options), "action": None, "unsupported_claims": []}
 
 def log_context(parts):
     """Step 1: print exactly what is sent to the model, one line per part."""
     for part in parts:
         print("CONTEXT:", part)
 
-
 def image_turn(filename):
     image = vlm.ask(os.path.join(HERE, "sample_images", filename), "what deadline is shown?")
     return {"reply": vlm.render(image), "options": [], "action": None,
             "unsupported_claims": [], "image": image}
-
 
 def turn(message):
     global PENDING_TOOL
@@ -88,12 +113,15 @@ def turn(message):
         return {"reply": description, "options": [], "action": None, "unsupported_claims": [],
                 "tool_call": call, "tool_confirmation": description}
 
-    # --- Lab 3 cases, unchanged ---
-    if "achebe" in m or "next week" in m:
-        return decline_turn()
-    named = [a for a in APPOINTMENTS if a["clinic"].lower()[:5] in m]
-    if "appointment" in m and len(named) != 1:
-        return clarification_turn(APPOINTMENTS)
+    # --- Step 2: agree on what was asked before fetching anything ---
+    if message == "Start over":
+        QUERY["ticker"] = QUERY["horizon"] = None
+        return grounding_turn()
+    if message != "Confirm":
+        return grounding_turn(understand(message))
+    if not (QUERY["ticker"] and QUERY["horizon"]):
+        return grounding_turn()
+    message = QUERY["ticker"]        # confirmed: look up evidence for this stock
 
     parts = [{"role": "user", "content": message}]
     log_context(parts)
@@ -127,7 +155,6 @@ def turn(message):
     data["evidence"] = relevant
     return data
 
-
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, body, ctype="application/json"):
         self.send_response(code); self.send_header("Content-Type", ctype)
@@ -144,7 +171,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, *a):
         pass
-
 
 if __name__ == "__main__":
     port = 8000
