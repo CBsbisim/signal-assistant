@@ -1,20 +1,16 @@
-"""The supplied Lab 4 prototype.
+"""Signal assistant: a buy / hold / sell signal with its evidence, and the person's own decision.
 
-    python app.py            serve on 8000
+    python app.py            serve on http://localhost:8000
     python app.py --port 8001
 
-The two turns below are local code: they work with no model at all. The model is only asked for the
-ordinary case, and its reply is checked before anything is rendered.
+Built from the supplied Lab 4 prototype (first commit). No model or network is needed:
+the evidence is simulated, and the signal is a readable rule in signal_card.py.
 """
 import json, os, re, sys, uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import model  # noqa: E402
-import retrieve  # noqa: E402  
-import tools  # noqa: E402     
-import vlm  # noqa: E402   
-import signal_card  # noqa: E402  Step 3: evidence -> signal, confidence, dated evidence
-import decisions  # noqa: E402    Step 5: record the person's own decision
+import signal_card   # evidence -> signal, confidence, dated evidence
+import decisions     # record the person's own decision
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PENDING_TOOL = None          # a validated call waiting for the user's Confirm
 MIN_SCORE = 0.25           # below this, a retrieval hit is not treated as evidence
@@ -26,23 +22,6 @@ HORIZONS = ["1 month", "6 months", "1 year"]  # offered when the person gives no
 QUERY = {"ticker": None, "horizon": None}     # what the system has understood so far
 LAST_CARD = None                              # the signal currently on screen
 
-def valid(data):
-    return isinstance(data, dict) and all(k in data and isinstance(data[k], t) for k, t in SCHEMA.items())
-
-def fallback_turn():
-    """A malformed reply is a caught error, never a blank page."""
-    return {"reply": "I could not read the reply, so I have not changed anything. Try again or ask the module lead.",
-            "options": [], "action": None, "unsupported_claims": []}
-
-def clarification_turn(candidates):
-    names = " or ".join("%s on %s" % (a["clinic"], a["date"]) for a in candidates)
-    return {"reply": "Which appointment: %s?" % names,
-            "options": [a["id"] for a in candidates], "action": None, "unsupported_claims": []}
-
-def decline_turn():
-    return {"reply": "Dr Achebe has no clinic next week, and I cannot see your dialysis days, so I cannot "
-                     "avoid them. Here are the open slots; you choose.",
-            "options": ["Thu 09:40", "Fri 14:10"], "action": None, "unsupported_claims": ["clinic availability beyond next week"]}
 
 def understand(message):
     """Fill in the ticker and horizon the message mentions. Return a problem to ask about, if any."""
@@ -112,8 +91,7 @@ def undo_turn(record_id):
         record["decision"], record["ticker"])
     return {"reply": text, "options": [], "action": None, "unsupported_claims": [], "undone": text}
 def turn(message):
-    global PENDING_TOOL, LAST_CARD
-    m = (message or "").lower()
+    global LAST_CARD
 
     # --- Agree on what was asked before fetching anything ---
     if message.startswith("__decide__"):

@@ -36,47 +36,12 @@ let lastCard = null;
 function say(text, me){ const d=document.createElement('div'); d.className='turn'+(me?' me':''); d.textContent=text; t.appendChild(d); }
 function render(data){                       // the fields, drawn — not the reply, printed
   card.innerHTML = '';
-  if (data.action) { const c=document.createElement('div'); c.className='card';
-    c.textContent = data.action.clinic + ' · ' + data.action.date + ' ' + (data.action.time||''); card.appendChild(c); }
-  if (data.stale_warning) { const w=document.createElement('p'); w.className='warning';
-    w.setAttribute('role','alert'); w.textContent=data.stale_warning; card.appendChild(w); }
-  if (data.recovery_notice) { const w=document.createElement('p'); w.className='warning';
-    w.setAttribute('role','alert'); w.textContent=data.recovery_notice; card.appendChild(w); }
   (data.options||[]).forEach(o => { const b=document.createElement('button'); b.textContent=o;
     b.onclick = () => send(o); card.appendChild(b); });
-
-  // Lab 4: the answer itself
-  if (data.reply && !data.tool_confirmation && !data.tool_result) {
-    const answer = document.createElement('p'); answer.textContent = data.reply; card.appendChild(answer);
-  }
-  // Lab 4: provenance beside the answer
-  if (data.evidence && data.evidence.length) {
-    const e = document.createElement('div'); e.className = 'card';
-    e.innerHTML = '<strong>Evidence</strong>';
-    data.evidence.forEach(h => {
-      const p = document.createElement('p');
-      p.textContent = (h.superseded ? '[SUPERSEDED | ' : '[') + h.source + ' | ' + h.section +
-        ' | updated ' + h.date + ' | score ' + h.score + '] ' + h.text;
-      e.appendChild(p);
-    });
-    card.appendChild(e);
-  }
-  // Lab 4: confirmation shows the arguments, then Confirm / Cancel
-  if (data.tool_confirmation) {
-    const p = document.createElement('p'); p.textContent = data.tool_confirmation; card.appendChild(p);
-    const yes = document.createElement('button'); yes.textContent = 'Confirm';
-    yes.onclick = () => send('__confirm_tool__'); card.appendChild(yes);
-    const no = document.createElement('button'); no.textContent = 'Cancel';
-    no.onclick = () => send('__cancel_tool__'); card.appendChild(no);
-  }
-  // Lab 4: report from what the tool returned, not from a model sentence
-  if (data.tool_result) {
-    const r = document.createElement('p'); r.textContent = 'Tool result: ' + JSON.stringify(data.tool_result);
-    card.appendChild(r);
-  }
-    // Step 3: the signal card
-    if (data.card) drawCard(data.card);
-  // Step 5: keep the card on screen and add what the tool returned
+  const answer = document.createElement('p'); answer.textContent = data.reply; card.appendChild(answer);
+  // Step 1: the signal card
+  if (data.card) drawCard(data.card);
+  // Step 2: keep the card on screen and add what the tool returned
   if (data.receipt && lastCard) { drawCard(lastCard); drawReceipt(data.receipt); }
   if (data.undone && lastCard) { drawCard(lastCard); line(card, data.undone, 'note'); }
 }
