@@ -12,6 +12,7 @@
  .signal{padding:14px;border-radius:10px;background:#fff;border:1px solid #ccc;margin-bottom:12px}
  .signal h3{margin:0 0 6px} .ev{margin:8px 0;padding:6px 10px;border-left:4px solid #999}
  .ev.positive{border-left-color:#00694e} .ev.negative{border-left-color:#a54100}
+ .receipt{padding:12px;border-left:4px solid #003b5c;background:#eef4f8;margin-bottom:12px}
  .detail{margin-top:10px;padding:10px;background:#f5f7f8;border-radius:8px}
  .detail table{border-collapse:collapse;font-size:14px} .detail th,.detail td{text-align:left;padding:3px 8px;border-bottom:1px solid #ddd}
  @media(max-width:700px){body{grid-template-columns:1fr}main{border-right:0;border-bottom:1px solid #ddd;padding:16px}aside{padding:16px}input{box-sizing:border-box}}
@@ -74,7 +75,17 @@ function render(data){                       // the fields, drawn — not the re
     card.appendChild(r);
   }
     // Step 3: the signal card
-  if (data.card) drawCard(data.card);
+    if (data.card) drawCard(data.card);
+  // Step 5: keep the card on screen and add what the tool returned
+  if (data.receipt && lastCard) { drawCard(lastCard); drawReceipt(data.receipt); }
+  if (data.undone && lastCard) { drawCard(lastCard); line(card, data.undone, 'note'); }
+}
+function drawReceipt(r){
+  const box=document.createElement('div'); box.className='receipt';
+  line(box, r.text);
+  const u=document.createElement('button'); u.textContent='Undo';
+  u.onclick = () => send('__undo__:' + r.id); box.appendChild(u);
+  card.appendChild(box);
 }
 function line(parent, text, cls){
   const p=document.createElement('p'); if (cls) p.className=cls; p.textContent=text; parent.appendChild(p); return p;
@@ -125,6 +136,14 @@ function drawCard(c){
   toggle.onclick = () => { detailed = !detailed; drawCard(lastCard); };
   box.appendChild(toggle);
   if (detailed) drawDetail(box, c);
+  if (c.signal !== 'No signal') {
+    const h=document.createElement('h4'); h.textContent='Your decision'; box.appendChild(h);
+    ['Buy', 'Hold', 'Sell'].forEach(choice => {
+      const b=document.createElement('button'); b.textContent=choice;
+      b.onclick = () => send('__decide__:' + choice + ':' + (detailed ? 'detailed' : 'brief') + ':' + c.id);
+      box.appendChild(b);
+    });
+  }
   line(box, 'This is a signal, not advice. The decision is yours.', 'note');
   line(box, 'Simulated: ' + c.simulated, 'note');
   card.appendChild(box);

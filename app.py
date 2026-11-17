@@ -6,7 +6,7 @@
 The two turns below are local code: they work with no model at all. The model is only asked for the
 ordinary case, and its reply is checked before anything is rendered.
 """
-import json, os, re, sys
+import json, os, re, sys, uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import model  # noqa: E402
@@ -14,6 +14,7 @@ import retrieve  # noqa: E402
 import tools  # noqa: E402     
 import vlm  # noqa: E402   
 import signal_card  # noqa: E402  Step 3: evidence -> signal, confidence, dated evidence
+import decisions  # noqa: E402    Step 5: record the person's own decision
 HERE = os.path.dirname(os.path.abspath(__file__))
 PENDING_TOOL = None          # a validated call waiting for the user's Confirm
 MIN_SCORE = 0.25           # below this, a retrieval hit is not treated as evidence
@@ -23,6 +24,7 @@ APPOINTMENTS = [{"id": "derm-14nov", "clinic": "Dermatology", "date": "14 Nov", 
 TICKERS = ["XYZ", "ABC"]                      # stocks the simulated corpus covers
 HORIZONS = ["1 month", "6 months", "1 year"]  # offered when the person gives no horizon
 QUERY = {"ticker": None, "horizon": None}     # what the system has understood so far
+LAST_CARD = None                              # the signal currently on screen
 
 def valid(data):
     return isinstance(data, dict) and all(k in data and isinstance(data[k], t) for k, t in SCHEMA.items())
@@ -86,12 +88,38 @@ def image_turn(filename):
     image = vlm.ask(os.path.join(HERE, "sample_images", filename), "what deadline is shown?")
     return {"reply": vlm.render(image), "options": [], "action": None,
             "unsupported_claims": [], "image": image}
+def decision_turn(message):
+    """The button sends __decide__:<choice>:<view>:<card id>. Treat it as a proposal and check it."""
+    parts = message.split(":")
+    if len(parts) != 4:
+        return {"reply": "Not recorded: I could not read that request.", "options": [], "action": None,
+                "unsupported_claims": []}
+    _, choice, view, card_id = parts
+    call = {"name": "record_decision", "arguments": {"card_id": card_id, "decision": choice, "view": view}}
+    ok, reason = decisions.valid(call, LAST_CARD)
+    if not ok:
+        return {"reply": "Not recorded: %s." % reason, "options": [], "action": None, "unsupported_claims": []}
+    record = decisions.run(call, LAST_CARD)
+    return {"reply": decisions.receipt(record), "options": [], "action": None, "unsupported_claims": [],
+            "receipt": dict(record, text=decisions.receipt(record))}
 
+
+def undo_turn(record_id):
+    record = decisions.undo(record_id)
+    if not record:
+        return {"reply": "Nothing to undo.", "options": [], "action": None, "unsupported_claims": []}
+    text = "Undone: your %s decision on %s is marked as undone in the log. You can choose again." % (
+        record["decision"], record["ticker"])
+    return {"reply": text, "options": [], "action": None, "unsupported_claims": [], "undone": text}
 def turn(message):
-    global PENDING_TOOL
+    global PENDING_TOOL, LAST_CARD
     m = (message or "").lower()
 
     # --- Agree on what was asked before fetching anything ---
+    if message.startswith("__decide__"):
+        return decision_turn(message)
+    if message.startswith("__undo__:"):
+        return undo_turn(message.split(":", 1)[1])
     if message == "Start over":
         QUERY["ticker"] = QUERY["horizon"] = None
         return grounding_turn()
@@ -102,6 +130,8 @@ def turn(message):
     
     # --- Confirmed, so build the signal card from the evidence ---
     c = signal_card.build(QUERY["ticker"], QUERY["horizon"])
+    c["id"] = uuid.uuid4().hex[:8]
+    LAST_CARD = c
     return {"reply": "%s: %s, %s confidence. The decision is yours." % (c["ticker"], c["signal"], c["confidence"]),
             "options": ["Start over"], "action": None, "unsupported_claims": [], "card": c}
 
