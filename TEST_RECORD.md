@@ -4,7 +4,6 @@ Run with `python run_cases.py`. The cases are fixed, so every code change is che
 
 ## Latest run (10:45 17/11/2026)
 
-D:\AA-MINXI\MScModules\IIS\signal-assistant>python run_cases.py
 | Case | What it tests | Must contain | Result |
 |---|---|---|---|
 | G1 | ticker and horizon understood | Understood as: XYZ, holding for 6 months | PASS |
@@ -25,7 +24,7 @@ D:\AA-MINXI\MScModules\IIS\signal-assistant>python run_cases.py
 
 ## Failures found and what I changed
 
-- **G3 (first run):**  It failed to understant which time frame does the user want. According to Amershi G12, remember recent interactions, if user just said “1 year”; asking again would be annoying. So the test is wrong, keeping "1 year" is correct if user has mentioned it before.
+- **G3 (first run):**  It failed to understant which time frame does the user want. According to Amershi G12, remember recent interactions, if user just said “1 year”; asking again would be annoying. So the test is wrong, keeping "1 year" is correct if user has mentioned it before. And it is safe to keep the horizon because user might actually record action, buy/sell/hold, for a specific time frame, which is why we need to keep the horizon history as base.
 - **Two stocks in one message (Step 2b):** "Is XYZ or ABC better" silently became ABC. Commit: **7da3faa** Fix: two tickers in one message silently picked the last; now asks which one (found in testing) from `git log --oneline`
 - **Top-3 retrieval hid the old report (Step 3):** the 2025 earnings file never reached the top 3, so the stale warning could not fire. The signal card now reads all evidence for the stock.
 - **MIN_SOURCES experiment:** S2 failed, saying high confidence on one source
