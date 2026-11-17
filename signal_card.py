@@ -12,7 +12,9 @@ import retrieve
 VOTE = {"positive": 1, "negative": -1, "neutral": 0}
 MIN_SOURCES = 3   # with fewer independent sources than this, confidence is never above "low"
 SHOW = 3          # evidence items shown on the card; the rest sit behind "Show all"
-
+RULE = ("Each source gets one vote: up, down or neutral. If the net agreement is under 40%%, the signal is Hold. "
+        "Otherwise it follows the majority. Confidence is high at 75%% agreement or more, medium at 40%% or more, "
+        "and always low with fewer than %d sources." % MIN_SOURCES)
 
 def evidence_for(ticker, passages=None):
     """Every passage that names the ticker, split into evidence to use and evidence replaced by a newer source."""
@@ -38,8 +40,8 @@ def build(ticker, horizon, today=None):
     current, replaced = evidence_for(ticker)
     if not current:
         return {"ticker": ticker, "horizon": horizon, "signal": "No signal", "confidence": "none",
-                "reason": "I have no current evidence for %s, so I give no signal." % ticker,
-                "top": [], "all": [], "stale": [], "simulated": __doc__.split("SIMULATED: ")[1].split("\n\n")[0]}
+        "reason": "I have no current evidence for %s, so I give no signal." % ticker,
+        "top": [], "all": [], "stale": [], "simulated": __doc__.split("SIMULATED: ")[1].split("\n\n")[0]}
 
     newest = sorted(current, key=lambda p: p["date"], reverse=True)
     sources = {}
@@ -78,8 +80,15 @@ def build(ticker, horizon, today=None):
     stale += ["Out of date: %s, dated %s, is marked superseded and has no newer replacement. Check a current source."
               % (p["source"], p["date"]) for p in current if p["superseded"]]
 
+    breakdown = [{"section": p["section"], "source": p["source"], "date": p["date"], "direction": p["direction"],
+                  "vote": VOTE.get(p["direction"], 0)} for p in sources.values()]
+    not_used = ["%s, dated %s: replaced by a newer source." % (p["source"], p["date"]) for p in replaced]
+    not_used.append("Your holding period (%s): shown, but not yet used to weight the evidence [planned]." % horizon)
+    not_used.append("Anything after the newest date above: this simulated feed has no live data [planned].")
+
     return {"ticker": ticker, "horizon": horizon, "signal": signal, "confidence": confidence, "reason": reason,
             "top": [item(p, today) for p in top], "all": [item(p, today) for p in newest], "stale": stale,
+            "breakdown": breakdown, "not_used": not_used, "rule": RULE,
             "simulated": __doc__.split("SIMULATED: ")[1].split("\n\n")[0]}
 
 
@@ -90,6 +99,7 @@ if __name__ == "__main__":
         assert any(e["direction"] == "negative" for e in xyz["top"]), "evidence against is missing"
         assert len(xyz["stale"]) == 1, "the 2025 earnings report should be reported as replaced"
         assert (abc["signal"], abc["confidence"]) == ("Sell", "low"), abc
+        assert len(xyz["breakdown"]) == 4 and len(xyz["not_used"]) == 3, "detailed view is incomplete"
         print("ok: XYZ Buy/medium with 1 replaced source, ABC Sell/low")
         sys.exit(0)
     print(json.dumps(build(sys.argv[1] if len(sys.argv) > 1 else "XYZ", "6 months"), indent=2))

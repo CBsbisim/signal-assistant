@@ -9,9 +9,11 @@
  .card{padding:12px;border-radius:10px;background:#d6e8e2;margin-bottom:12px} .note{color:#4a4a4a;font-size:14px}
  .warning{padding:12px;border-left:4px solid #a54100;background:#fff1e8;color:#5c2500}
  input{width:90%;padding:8px;font:inherit;border:1px solid #bbb;border-radius:8px}
-  .signal{padding:14px;border-radius:10px;background:#fff;border:1px solid #ccc;margin-bottom:12px}
+ .signal{padding:14px;border-radius:10px;background:#fff;border:1px solid #ccc;margin-bottom:12px}
  .signal h3{margin:0 0 6px} .ev{margin:8px 0;padding:6px 10px;border-left:4px solid #999}
  .ev.positive{border-left-color:#00694e} .ev.negative{border-left-color:#a54100}
+ .detail{margin-top:10px;padding:10px;background:#f5f7f8;border-radius:8px}
+ .detail table{border-collapse:collapse;font-size:14px} .detail th,.detail td{text-align:left;padding:3px 8px;border-bottom:1px solid #ddd}
  @media(max-width:700px){body{grid-template-columns:1fr}main{border-right:0;border-bottom:1px solid #ddd;padding:16px}aside{padding:16px}input{box-sizing:border-box}}
 </style>
 <main>
@@ -28,6 +30,8 @@
 </aside>
 <script>
 const t = document.getElementById('transcript'), card = document.getElementById('card');
+let detailed = false;   // Step 4: brief by default; the person opts in to the detail
+let lastCard = null;
 function say(text, me){ const d=document.createElement('div'); d.className='turn'+(me?' me':''); d.textContent=text; t.appendChild(d); }
 function render(data){                       // the fields, drawn — not the reply, printed
   card.innerHTML = '';
@@ -81,7 +85,24 @@ function evidenceRow(e){
   p.textContent = arrow + ': "' + e.text + '" (' + e.source + ', ' + e.date + ', ' + e.days_old + ' days ago)';
   return p;
 }
+function drawDetail(box, c){
+  const d=document.createElement('div'); d.className='detail';
+  const h1=document.createElement('h4'); h1.textContent='What I used: one vote per source'; d.appendChild(h1);
+  const tbl=document.createElement('table');
+  tbl.innerHTML='<tr><th>Source</th><th>Date</th><th>Vote</th></tr>';
+  c.breakdown.forEach(b => { const r=tbl.insertRow();
+    r.insertCell().textContent=b.section; r.insertCell().textContent=b.date;
+    r.insertCell().textContent={1:'▲ up', '-1':'▼ down', 0:'• neutral'}[b.vote]; });
+  d.appendChild(tbl);
+  line(d, 'Rule: ' + c.rule);
+  const h2=document.createElement('h4'); h2.textContent='What I did not use'; d.appendChild(h2);
+  c.not_used.forEach(s => line(d, '• ' + s));
+  const h3=document.createElement('h4'); h3.textContent='How to change the result'; d.appendChild(h3);
+  line(d, 'Start over to pick another stock or holding period. If a source looks wrong or out of date, do not rely on this signal.');
+  box.appendChild(d);
+}
 function drawCard(c){
+  lastCard = c;
   card.innerHTML = '';
   const box=document.createElement('div'); box.className='signal';
   const head=document.createElement('h3');
@@ -99,6 +120,11 @@ function drawCard(c){
     s.textContent='Show all evidence (' + c.all.length + ')'; d.appendChild(s);
     c.all.forEach(e => d.appendChild(evidenceRow(e))); box.appendChild(d);
   }
+  const toggle=document.createElement('button');
+  toggle.textContent = detailed ? 'Hide how this signal was made' : 'Show how this signal was made';
+  toggle.onclick = () => { detailed = !detailed; drawCard(lastCard); };
+  box.appendChild(toggle);
+  if (detailed) drawDetail(box, c);
   line(box, 'This is a signal, not advice. The decision is yours.', 'note');
   line(box, 'Simulated: ' + c.simulated, 'note');
   card.appendChild(box);
