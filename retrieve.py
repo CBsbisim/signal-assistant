@@ -40,6 +40,7 @@ def load():
         for para in [p.strip() for p in body.split("\n\n") if p.strip()]:
             out.append({"file": name, "source": meta.get("source", name), "section": meta.get("section", ""),
                         "date": meta.get("updated", "unknown"),
+                        "direction": meta.get("direction", "neutral"),
                         "superseded": meta.get("superseded", "false").lower() == "true",
                         "text": " ".join(para.split())})
     return out

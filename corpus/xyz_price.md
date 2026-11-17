@@ -2,6 +2,7 @@
 source: Simulated price feed (XYZ)
 section: XYZ price trend
 updated: 2026-11-10
+direction: positive
 ---
 XYZ share price has risen 9% over the last two months, closing above its 50-day average on most days.
 

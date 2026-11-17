@@ -10,10 +10,10 @@ import json, os, re, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import model  # noqa: E402
-import retrieve  # noqa: E402  Lab 4: evidence with source, section, date, score
-import tools  # noqa: E402     Lab 4: one narrow tool, validated + confirmed + logged
-import vlm  # noqa: E402       Lab 4: image answer with confidence, or refusal with reason
-
+import retrieve  # noqa: E402  
+import tools  # noqa: E402     
+import vlm  # noqa: E402   
+import signal_card  # noqa: E402  Step 3: evidence -> signal, confidence, dated evidence
 HERE = os.path.dirname(os.path.abspath(__file__))
 PENDING_TOOL = None          # a validated call waiting for the user's Confirm
 MIN_SCORE = 0.25           # below this, a retrieval hit is not treated as evidence
@@ -91,34 +91,7 @@ def turn(message):
     global PENDING_TOOL
     m = (message or "").lower()
 
-    # --- Lab 4 test controls (run locally, no model needed) ---
-    if message == "__poster__":
-        return image_turn("sample_poster.png")
-    if message == "__noticeboard__":
-        return image_turn("sample_noticeboard.png")
-    if message == "__confirm_tool__" and PENDING_TOOL:
-        result = tools.run(PENDING_TOOL, confirmed_by="user")   # runs only after Confirm
-        PENDING_TOOL = None
-        return {"reply": "Tool result: " + json.dumps(result), "options": [], "action": None,
-                "unsupported_claims": [], "tool_result": result}
-    if message == "__cancel_tool__":
-        PENDING_TOOL = None
-        return {"reply": "Cancelled. Nothing was added.", "options": [], "action": None,
-                "unsupported_claims": []}
-    if "revision slot" in m:
-        minutes = 900 if "900" in m else 90                     # "900" lets us test the refusal in the browser
-        call = {"name": "book_slot", "arguments": {"date": "2026-11-14", "minutes": minutes}}
-        ok, reason = tools.valid(call)                          # check BEFORE anything can run
-        if not ok:
-            PENDING_TOOL = None
-            return {"reply": "Tool refused: " + reason + ". Nothing ran.", "options": [],
-                    "action": None, "unsupported_claims": [], "tool_refused": reason}
-        PENDING_TOOL = call
-        description = tools.describe(call)
-        return {"reply": description, "options": [], "action": None, "unsupported_claims": [],
-                "tool_call": call, "tool_confirmation": description}
-
-    # --- Step 2: agree on what was asked before fetching anything ---
+    # --- Agree on what was asked before fetching anything ---
     if message == "Start over":
         QUERY["ticker"] = QUERY["horizon"] = None
         return grounding_turn()
@@ -126,39 +99,11 @@ def turn(message):
         return grounding_turn(understand(message))
     if not (QUERY["ticker"] and QUERY["horizon"]):
         return grounding_turn()
-    message = QUERY["ticker"]        # confirmed: look up evidence for this stock
-
-    parts = [{"role": "user", "content": message}]
-    log_context(parts)
-    data = model.call_json(parts, SCHEMA)
-    if not valid(data):
-        return fallback_turn()          # a malformed reply is still caught; retrieval does not hide it
-
-    # --- Lab 4 retrieval: answer from the best current passage, keep provenance ---
-    hits = retrieve.retrieve(message, k=3)
-    relevant = [h for h in hits if h["score"] > 0]
-    if relevant and relevant[0]["score"] >= MIN_SCORE:
-        top = relevant[0]
-        if top.get("superseded"):
-            current = next((h for h in relevant
-                            if h["section"] == top["section"] and not h.get("superseded")), None)
-            if current:
-                data["reply"] = current["text"]
-                data["stale_warning"] = ("The top retrieval result is superseded. "
-                                         "This answer uses the newer passage shown below.")
-            else:
-                data["reply"] = ("The top result is marked superseded, and no current passage was found. "
-                                 "Check a current source before using it.")
-                data["stale_warning"] = "No current passage was found; do not rely on the old result."
-        else:
-            data["reply"] = top["text"]
-    else:
-        data["reply"] = ("The supplied corpus does not give a reliable answer. "
-                         "Ask the module lead about anything it does not cover.")
-    data["options"] = []
-    data["action"] = None
-    data["evidence"] = relevant
-    return data
+    
+    # --- Confirmed, so build the signal card from the evidence ---
+    c = signal_card.build(QUERY["ticker"], QUERY["horizon"])
+    return {"reply": "%s: %s, %s confidence. The decision is yours." % (c["ticker"], c["signal"], c["confidence"]),
+            "options": ["Start over"], "action": None, "unsupported_claims": [], "card": c}
 
 class Handler(BaseHTTPRequestHandler):
     def _send(self, code, body, ctype="application/json"):
