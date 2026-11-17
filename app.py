@@ -16,7 +16,7 @@ import vlm  # noqa: E402       Lab 4: image answer with confidence, or refusal w
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PENDING_TOOL = None          # a validated call waiting for the user's Confirm
-MIN_SCORE = 0.25             # below this, a retrieval hit is not treated as evidence
+MIN_SCORE = 0.25           # below this, a retrieval hit is not treated as evidence
 SCHEMA = {"reply": str, "options": list, "action": (dict, type(None)), "unsupported_claims": list}
 APPOINTMENTS = [{"id": "derm-14nov", "clinic": "Dermatology", "date": "14 Nov", "time": "10:20"},
                 {"id": "physio-20nov", "clinic": "Physiotherapy", "date": "20 Nov", "time": "09:00"}]
@@ -43,26 +43,31 @@ def decline_turn():
             "options": ["Thu 09:40", "Fri 14:10"], "action": None, "unsupported_claims": ["clinic availability beyond next week"]}
 
 def understand(message):
-    """Fill in the ticker and horizon the message mentions. Return an unknown ticker, if any."""
-    found = False
-    for t in TICKERS:
-        if re.search(r"\b%s\b" % t, message, re.I):
-            QUERY["ticker"] = t
-            found = True
+    """Fill in the ticker and horizon the message mentions. Return a problem to ask about, if any."""
+    found = [t for t in TICKERS if re.search(r"\b%s\b" % t, message, re.I)]
     m = re.search(r"(\d+)\s*(week|month|year)", message, re.I)
     if m:
         n, unit = int(m.group(1)), m.group(2).lower()
         QUERY["horizon"] = "%d %s%s" % (n, unit, "" if n == 1 else "s")
-    unknown = [w for w in re.findall(r"\b[A-Z]{2,5}\b", message) if w not in TICKERS]
-    if unknown and not found:
+    if len(found) > 1:
         QUERY["ticker"] = None
-        return unknown[0]
+        return {"several": found}
+    if found:
+        QUERY["ticker"] = found[0]
+        return None
+    unknown = [w for w in re.findall(r"\b[A-Z]{2,5}\b", message) if w not in TICKERS]
+    if unknown:
+        QUERY["ticker"] = None
+        return {"unknown": unknown[0]}
     return None
 
-def grounding_turn(unknown=None):
+def grounding_turn(problem=None):
     """Ask for whatever is missing, or show what was understood and wait for Confirm."""
-    if unknown:
-        text, options = "I have no data for %s. Which stock did you mean?" % unknown, TICKERS
+    if problem and "several" in problem:
+        text = "I look at one stock at a time. Which one first: %s?" % " or ".join(problem["several"])
+        options = problem["several"]
+    elif problem and "unknown" in problem:
+        text, options = "I have no data for %s. Which stock did you mean?" % problem["unknown"], TICKERS
     elif not QUERY["ticker"]:
         text, options = "Which stock are you asking about?", TICKERS
     elif not QUERY["horizon"]:
