@@ -1,10 +1,12 @@
 # Signal assistant
 
-**README prose word count:** 607
+**README prose word count:** 616
 
 A prototype decision-support assistant for retail investors. You ask about a stock; it shows what it understood, gives a Buy / Hold / Sell signal with its confidence and dated evidence, and records **your** decision. MSc Intelligent Interactive Systems, Assignment 2, University of Birmingham.
 
 Submitted version: tag `v1.0-a2` (https://github.com/CBsbisim/signal-assistant/releases/tag/v1.0-a2)
+
+![System diagram](docs/system_diagram.png)
 
 ## Project status
 
@@ -79,4 +81,5 @@ Suggested walkthrough: click **Try: XYZ, 6 months** → **Confirm** → **Show h
 
 - `TEST_RECORD.md`: test results, failures found and what changed.
 - `screenshots/`: the screens used in the report's storyboards.
+- `docs/`: the system diagram and storyboards used in the report.
 - No ZIP file; everything is in this repository.
