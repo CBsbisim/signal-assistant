@@ -77,13 +77,13 @@ Suggested walkthrough: click **Try: XYZ, 6 months** → **Confirm** → **Show h
 
 **Assisted** (Claude, Anthropic):
 - a build plan based on my A1 review and the Lab 4 code
-- the draft code for the project: `app.py`, `signal_card.py`, `decisions.py`, `run_cases.py`, `index.html`
+- the draft code for the project: `app.py`, `signal_card.py`, `decisions.py`, `run_cases.py`, `index.html`,`TEST_RECOURD.md`,`README.md`
 - suggestions for resonable test cases.
 - explanations linking each design choice to the Week 1–4 lectures
-- review of my README, system diagram and storyboards, and word counts
+- review of my README, system diagram and storyboards, track of AI usage and word counts
 
 **My own work and decisions:**
-- I ran, differentiated, troubleshooing and tested: `app.py`, `signal_card.py`, `decisions.py`, `run_cases.py`, `index.html`
+- I ran, differentiated, troubleshooing and tested: `app.py`, `signal_card.py`, `decisions.py`, `run_cases.py`, `index.html`,`TEST_RECOURD.md`,`README.md`
 - the evidence texts and figures in `corpus/`, and all six direction labels
 - the system diagram and the three storyboards
 - testing every step in the browser and running all self-tests and the 13 cases
