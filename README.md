@@ -67,15 +67,31 @@ Suggested walkthrough: click **Try: XYZ, 6 months** → **Confirm** → **Show h
 | `corpus/` | Simulated evidence, one file per source |
 | `run_cases.py`, `TEST_RECORD.md` | Fixed test cases and the record of what they found |
 
-## AI assistance
+## Authorship and AI assistance
 
-**Tool**: Claude.
+**Reused** (first commit [5a838e8](https://github.com/CBsbisim/signal-assistant/commit/5a838e8), supplied Lab 4 prototype):
+- the web server and request handling in `app.py`
+- the evidence loader in `retrieve.py` (source, section, date, superseded flag)
+- the page layout and chat in `index.html`
+- the pattern of checking an action before running it, which `decisions.py` follows
 
-**Asked for**: A building guide based on A1 and Lab 4; explanations of lecture concepts, reference codes.
+**Assisted** (Claude, Anthropic):
+- a build plan based on my A1 review and the Lab 4 code
+- the draft code for the project: `app.py`, `signal_card.py`, `decisions.py`, `run_cases.py`, `index.html`
+- suggestions for resonable test cases.
+- explanations linking each design choice to the Week 1–4 lectures
+- review of my README, system diagram and storyboards, and word counts
 
-**What I decided or changed**: I wrote the evidence texts, chose all six direction labels, chose to remember past horizon for G3 with my own reasons, picked which lab to start from with its guidance, judged the brief vs detailed views, write codes to fit.
+**My own work and decisions:**
+- I ran, differentiated, troubleshooing and tested: `app.py`, `signal_card.py`, `decisions.py`, `run_cases.py`, `index.html`
+- the evidence texts and figures in `corpus/`, and all six direction labels
+- the system diagram and the three storyboards
+- testing every step in the browser and running all self-tests and the 13 cases
 
-**How I checked**: Ran every self-test and the 13 cases; clicked through each step in the browser; the tests caught real bugs, the two-stock bug and G3.
+**Examples of reviewing and changing AI output:**
+- **Two stocks in one message.** My own test for the drafted code, "Is XYZ or ABC better for 1 year?", showed the code silently chose ABC without asking. I fixed this logic and re-ran the earlier cases ([7da3faa](https://github.com/CBsbisim/signal-assistant/commit/7da3faa)), so that the system ask for further confirmation.
+- **Test G3.** A suggested test from AI got the system to ask for a holding period again. I decided this test was wrong in terms of improving user experience: keeping the horizon from chat history follows Amershi's G12, and it is safe because later "Understood as…" would ask for confirmation again and if user actually clicks Start over, it corrects the horizon anyway.
+- **Minimum sources.** When the rule, minimum source, was removed, a single source gave "high confidence" and I tend to trust it in the brief view. So I kept the rule instead knowing that one source is not enough, and test S2 now checks it.
 
 ## Additional files
 
