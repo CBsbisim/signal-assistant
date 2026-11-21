@@ -1,6 +1,6 @@
 # Signal assistant
 
-**README prose word count:** 616
+**README prose word count:** 890
 
 A prototype decision-support assistant for retail investors. You ask about a stock; it shows what it understood, gives a Buy / Hold / Sell signal with its confidence and dated evidence, and records **your** decision. MSc Intelligent Interactive Systems, Assignment 2, University of Birmingham.
 
@@ -33,6 +33,10 @@ Submitted version: tag `v1.0-a2` (https://github.com/CBsbisim/signal-assistant/r
 | [c5265bb](https://github.com/CBsbisim/signal-assistant/commit/c5265bb) Decision recording, no trading | The investor keeps the final decision; the tool can only log it, never trade | Bad requests refused |
 | [f4b2238](https://github.com/CBsbisim/signal-assistant/commit/f4b2238) 13 fixed test cases | One demo isn’t evidence; rerun the same cases after every change | 12/13; G3 in `TEST_RECORD.md` |
 | [522d08c](https://github.com/CBsbisim/signal-assistant/commit/522d08c) Removed unused Lab 4 code | Unused Lab 4 code would mislead a reader about the system | 13/13 after |
+| [b5d3b88](https://github.com/CBsbisim/signal-assistant/commit/b5d3b88) System diagram (fixes: [f0606cc](https://github.com/CBsbisim/signal-assistant/commit/f0606cc), [a878b32](https://github.com/CBsbisim/signal-assistant/commit/a878b32)) | Show components, flows and what is implemented or simulated | Each box checked against the code |
+| [c649b44](https://github.com/CBsbisim/signal-assistant/commit/c649b44) Three storyboards | Show the person's actions, the system's responses and feedback | All screens taken from the running prototype |
+| [7bb2c6a](https://github.com/CBsbisim/signal-assistant/commit/7bb2c6a) Authorship section | Separate reused, AI-assisted and my own work | Each example traced to a commit (7da3faa, f4b2238) |
+| [v1.0-a2](https://github.com/CBsbisim/signal-assistant/tree/v1.0-a2) Release for submission | Finalise README, development record and links | 13/13 cases pass; all report links checked |
 
 ## Technology stack
 
